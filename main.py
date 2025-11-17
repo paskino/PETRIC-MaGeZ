@@ -21,9 +21,9 @@ import array_api_compat.cupy as xp
 from array_api_compat import to_device
 
 # import pure python re-implementation of the RDP -> only used to get diagonal of the RDP Hessian!
-from rdp import RDP
+from .rdp import RDP
 
-from petric import Dataset
+# from petric import Dataset
 
 
 def get_divisors(n):
@@ -73,7 +73,7 @@ class Submission(Algorithm):
 
     def __init__(
         self,
-        data: Dataset,
+        data,
         approx_num_subsets: int = 25,  # approximate number of subsets, closest divisor of num_views will be used
         update_objective_interval: int | None = None,
         complete_gradient_epochs: tuple[int, ...] = tuple(
@@ -353,7 +353,25 @@ class Submission(Algorithm):
             )
 
         ### Objective has to be maximized -> "+" for gradient ascent
-        self.x = self.x + self._step_size * self._precond * approximated_gradient
+        # self.x = self.x + self._step_size * self._precond * approximated_gradient
+        precond = self._precond.asarray(copy=False)
+        # print (f"precond {type(precond)} self._precond {type(self._precond)} approximated_gradient {type(approximated_gradient)}")
+        if False:
+            # Edo's code
+            if isinstance(approximated_gradient, STIR.ImageData):
+                approx_grad_arr = approximated_gradient.asarray(copy=True)
+            else:
+                approx_grad_arr = approximated_gradient * 1
+            approx_grad_arr *= precond
+            approx_grad_arr *= self._step_size
+            # hopefully modifying the view will reflect in self.x 
+            xarr = self.x.asarray(copy=False)
+            xarr += approx_grad_arr
+        else:
+            # Christoph's code https://github.com/SyneRBI/PETRIC2/issues/12 
+            approximated_gradient_sirf = self.x.clone()
+            approximated_gradient_sirf.fill(approximated_gradient)
+            self.x += self._step_size * self._precond * approximated_gradient_sirf
 
         # enforce non-negative constraint
         self.x.maximum(0, out=self.x)
