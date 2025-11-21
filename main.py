@@ -371,7 +371,10 @@ class Submission(Algorithm):
             # Christoph's code https://github.com/SyneRBI/PETRIC2/issues/12 
             approximated_gradient_sirf = self.x.clone()
             approximated_gradient_sirf.fill(approximated_gradient)
-            self.x += self._step_size * self._precond * approximated_gradient_sirf
+            approximated_gradient_sirf *= self._precond
+            approximated_gradient_sirf *= self._step_size
+            self.x += approximated_gradient_sirf
+            # self.x += self._step_size * self._precond * approximated_gradient_sirf
 
         # enforce non-negative constraint
         self.x.maximum(0, out=self.x)

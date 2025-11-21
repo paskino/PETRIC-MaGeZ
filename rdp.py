@@ -154,7 +154,7 @@ class SmoothFunction(abc.ABC):
         return res
 
     def prox_function(self, z: Array, x: Array, T: Array) -> float:
-        """returns the function h(z) = \sum_i f_i(z) + 0.5 * \sum_i (z_i - x_i)^2 / T_i
+        """returns the function h(z) = \\sum_i f_i(z) + 0.5 * \sum_i (z_i - x_i)^2 / T_i
         which when minimized over z is the proximal operator of the function at x
         """
         return self.__call__(z) + 0.5 * float((((z - x) ** 2) / T).sum())
@@ -179,10 +179,9 @@ class SmoothFunctionWithDiagonalHessian(SmoothFunction):
         if flat_input:
             x = self._xp.reshape(x, self._in_shape)
 
-        if self._scale == 1.0:
-            res = self._diag_hessian(x)
-        else:
-            res = self._scale * self._diag_hessian(x)
+        res = self._diag_hessian(x)
+        if self._scale != 1.0:
+            res *= self._scale
 
         if flat_input:
             res = self._xp.reshape(res, (res.size,))
@@ -259,8 +258,9 @@ class RDP(SmoothFunctionWithDiagonalHessian):
     def kappa(self, image: Array) -> None:
         self._kappa = image
         self._weights = (
-            neighbor_product(self._kappa, self._xp) * self._voxel_size_weights
+            neighbor_product(self._kappa, self._xp) 
         )
+        self._weights *= self._voxel_size_weights
 
     def _call(self, x: Array) -> float:
 
@@ -279,7 +279,11 @@ class RDP(SmoothFunctionWithDiagonalHessian):
 
     def _gradient(self, x: Array) -> Array:
         d, s = neighbor_difference_and_sum(x, self.xp, padding=self._padding)
-        phi = s + self.gamma * self.xp.abs(d) + self.eps
+        # phi = s + self.gamma * self.xp.abs(d) + self.eps
+        phi = self.xp.abs(d)
+        phi *= self.gamma
+        phi += s
+        phi += self.eps
 
         tmp = d * (2 * phi - (d + self.gamma * self.xp.abs(d))) / (phi**2)
 
@@ -290,16 +294,20 @@ class RDP(SmoothFunctionWithDiagonalHessian):
 
     def _diag_hessian(self, x: Array) -> Array:
         d, s = neighbor_difference_and_sum(x, self.xp, padding=self._padding)
-        # phi = s + self.gamma * self.xp.abs(d) + self.eps
-        phi = self.xp.abs(d)
-        phi *= self.gamma
-        phi += s
-        phi += self.eps
+        
 
         # tmp = ((s - d + self.eps) ** 2) / (phi**3)
         s -= d 
         s += self.eps
         s *= s
+        
+        # phi = s + self.gamma * self.xp.abs(d) + self.eps
+        self.xp.abs(d, out=d)
+        phi = d
+        phi *= self.gamma
+        phi += s
+        phi += self.eps
+        
         phi = phi ** 3
         s /= phi
 
