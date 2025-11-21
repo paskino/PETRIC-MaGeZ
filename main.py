@@ -355,17 +355,13 @@ class Submission(Algorithm):
         # self.x = self.x + self._step_size * self._precond * approximated_gradient
         precond = self._precond.asarray(copy=False)
         # print (f"precond {type(precond)} self._precond {type(self._precond)} approximated_gradient {type(approximated_gradient)}")
+        
+        # self.x += self._step_size * self._precond * approximated_gradient_sirf
         if False:
             # Edo's code
-            if isinstance(approximated_gradient, STIR.ImageData):
-                approx_grad_arr = approximated_gradient.asarray(copy=True)
-            else:
-                approx_grad_arr = approximated_gradient * 1
-            approx_grad_arr *= precond
-            approx_grad_arr *= self._step_size
-            # hopefully modifying the view will reflect in self.x 
-            xarr = self.x.asarray(copy=False)
-            xarr += approx_grad_arr
+            approximated_gradient *= precond
+            approximated_gradient *= self._step_size
+            self.x += approximated_gradient
         else:
             # Christoph's code https://github.com/SyneRBI/PETRIC2/issues/12 
             approximated_gradient_sirf = self.x.clone()
@@ -373,8 +369,7 @@ class Submission(Algorithm):
             approximated_gradient_sirf *= self._precond
             approximated_gradient_sirf *= self._step_size
             self.x += approximated_gradient_sirf
-            # self.x += self._step_size * self._precond * approximated_gradient_sirf
-
+            
         # enforce non-negative constraint
         self.x.maximum(0, out=self.x)
 
