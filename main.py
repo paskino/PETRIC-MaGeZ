@@ -25,6 +25,7 @@ from .rdp import RDP
 
 # from petric import Dataset
 
+VERSION = "MaGeZ Edo 1.0.1"
 
 def get_divisors(n):
     """Returns a sorted list of all divisors of a positive integer n."""
@@ -121,7 +122,7 @@ class Submission(Algorithm):
         seed : int, optional
             seed for numpy random generator (used to choose subsets), by default 1
         """
-
+        print (f"Initializing MaGeZ Version {VERSION}")
         np.random.seed(seed)
 
         self._verbose = verbose
@@ -231,6 +232,7 @@ class Submission(Algorithm):
 
         super().__init__(update_objective_interval=update_objective_interval, **kwargs)
         self.configured = True  # required by Algorithm
+        print("MaGeZ initialized.")
 
     @property
     def epoch(self) -> int:
@@ -341,35 +343,66 @@ class Submission(Algorithm):
             # remember that the objective has to be maximized
             # posterior = log likelihood - log prior ("minus" instead of "plus"!)
             approximated_gradient = (
-                 (
+                 self._num_subsets * (
                     (
                         self._subset_likelihood_funcs[self.subset].gradient(self.x)
                         - subset_prior_gradient
                     )
                     - self._subset_gradients[self.subset]
-                ) * self._num_subsets
+                ) 
                 + self._summed_subset_gradients
             )
+            # approximated_gradient = self._subset_likelihood_funcs[self.subset].gradient(self.x)
+            # # print(f"iter {self.iteration} Type of approximate_gradient", type(approximated_gradient))
+
+            # approximated_gradient -= subset_prior_gradient
+            # approximated_gradient -= self._subset_gradients[self.subset]
+            # approximated_gradient *= self._num_subsets
+            # approximated_gradient += self._summed_subset_gradients
+
+        # print(f"iter {self.iteration} Type of approximate_gradient", type(approximated_gradient))
+
 
         ### Objective has to be maximized -> "+" for gradient ascent
         # self.x = self.x + self._step_size * self._precond * approximated_gradient
-        precond = self._precond.asarray(copy=False)
-        # print (f"precond {type(precond)} self._precond {type(self._precond)} approximated_gradient {type(approximated_gradient)}")
+        
+        
         
         # self.x += self._step_size * self._precond * approximated_gradient_sirf
-        if False:
+        code = "christoph"
+        if code == "edo":
             # Edo's code
-            approximated_gradient *= precond
+            # print (f"precond {type(precond)} self._precond {type(self._precond)} approximated_gradient {type(approximated_gradient)}")
+            if isinstance(approximated_gradient, STIR.ImageData):
+                approximated_gradient_arr = approximated_gradient.asarray(copy=False)
+            else:
+                approximated_gradient_arr = approximated_gradient
+            precond = self._precond.asarray(copy=False)
+            approximated_gradient_arr *= precond
+            approximated_gradient_arr *= self._step_size
+            xarr = self.x.asarray(copy=False)
+            xarr += approximated_gradient_arr
+        elif code == "christoph+edo":
+            # Christoph's code https://github.com/SyneRBI/PETRIC2/issues/12 
+            # approximated_gradient_sirf = self.x.clone()
+            # approximated_gradient_sirf.fill(approximated_gradient)
+            # self.x = self.x + self._step_size * self._precond * approximated_gradient_sirf
+            
+            approximated_gradient *= self._precond
             approximated_gradient *= self._step_size
+            # print(f"iter {self.iteration} Type of approximate_gradient", type(approximated_gradient))
+
             self.x += approximated_gradient
-        else:
+            # print(f"iter {self.iteration} Type of self.x", type(self.x))
+
+            # self.x += self._step_size * self._precond * approximated_gradient_sirf
+        elif code == "christoph":
             # Christoph's code https://github.com/SyneRBI/PETRIC2/issues/12 
             approximated_gradient_sirf = self.x.clone()
             approximated_gradient_sirf.fill(approximated_gradient)
-            approximated_gradient_sirf *= self._precond
-            approximated_gradient_sirf *= self._step_size
-            self.x += approximated_gradient_sirf
-            
+            self.x = self.x + self._step_size * self._precond * approximated_gradient_sirf
+        else:
+            raise ValueError(f"Unknown code option {code}")
         # enforce non-negative constraint
         self.x.maximum(0, out=self.x)
 
