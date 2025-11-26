@@ -268,7 +268,11 @@ class RDP(SmoothFunctionWithDiagonalHessian):
             return self.xp.inf
 
         d, s = neighbor_difference_and_sum(x, self.xp, padding=self._padding)
-        phi = s + self.gamma * self.xp.abs(d) + self.eps
+        # phi = s + self.gamma * self.xp.abs(d) + self.eps
+        phi = self.xp.abs(d)
+        phi *= self.gamma
+        phi += s
+        phi += self.eps
 
         tmp = (d**2) / phi
 
@@ -290,10 +294,21 @@ class RDP(SmoothFunctionWithDiagonalHessian):
 
     def _diag_hessian(self, x: Array) -> Array:
         d, s = neighbor_difference_and_sum(x, self.xp, padding=self._padding)
-        phi = s + self.gamma * self.xp.abs(d) + self.eps
+        # phi = s + self.gamma * self.xp.abs(d) + self.eps
+        phi = self.xp.abs(d)
+        phi *= self.gamma
+        phi += s
+        phi += self.eps
 
-        tmp = ((s - d + self.eps) ** 2) / (phi**3)
+        # tmp = ((s - d + self.eps) ** 2) / (phi**3)
+        tmp = s - d
+        tmp += self.eps
 
+        tmp *= tmp
+        tmp /= phi
+        tmp /= phi
+        tmp /= phi
+        
         if self._weights is not None:
             tmp *= self._weights
 

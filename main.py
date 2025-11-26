@@ -360,7 +360,10 @@ class Submission(Algorithm):
             )
 
         ### Objective has to be maximized -> "+" for gradient ascent
-        self.x = self.x + self._step_size * self._precond * approximated_gradient
+        # self.x = self.x + self._step_size * self._precond * approximated_gradient
+        approximated_gradient *= self._precond
+        approximated_gradient *= self._step_size
+        self.x += approximated_gradient
 
         # enforce non-negative constraint
         self.x.maximum(0, out=self.x)
