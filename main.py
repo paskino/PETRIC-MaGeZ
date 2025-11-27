@@ -29,7 +29,7 @@ else:
 from array_api_compat import to_device
 
 # import pure python re-implementation of the RDP -> only used to get diagonal of the RDP Hessian!
-from rdp import RDP
+from .rdp import RDP
 
 from petric import Dataset
 
