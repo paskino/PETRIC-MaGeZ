@@ -369,7 +369,7 @@ class Submission(Algorithm):
         
         
         # self.x += self._step_size * self._precond * approximated_gradient_sirf
-        code = "christoph"
+        code = "edo"
         if code == "edo":
             # Edo's code
             # print (f"precond {type(precond)} self._precond {type(self._precond)} approximated_gradient {type(approximated_gradient)}")
@@ -382,6 +382,9 @@ class Submission(Algorithm):
             approximated_gradient_arr *= self._step_size
             xarr = self.x.asarray(copy=False)
             xarr += approximated_gradient_arr
+            if self.iteration % self.update_objective_interval == 0:
+                print (f"iter {self.iteration} step_size {self._step_size}")
+                print (f"iter {self.iteration} Stats approximate_gradient_arr min:{approximated_gradient_arr.min()} max:{approximated_gradient_arr.max()} mean:{approximated_gradient_arr.mean()} 99th perc:{np.percentile(approximated_gradient_arr, 99)}")
         elif code == "christoph+edo":
             # Christoph's code https://github.com/SyneRBI/PETRIC2/issues/12 
             # approximated_gradient_sirf = self.x.clone()
